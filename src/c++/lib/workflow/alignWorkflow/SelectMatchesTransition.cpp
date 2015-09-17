@@ -263,7 +263,6 @@ void SelectMatchesTransition::selectMatches(
     }
     matchSelector_.unreserve();
 
-    matchSelector_.dumpStats(matchSelectorStatsXmlPath);
 }
 
 

@@ -576,7 +576,6 @@ void FindMatchesTransition::perform(FoundMatchesMetadata &foundMatches)
         }
     }
 
-    dumpStats(demultiplexingStats, ret.tileMetadataList_);
     foundMatches.swap(ret);
 }
 

@@ -70,6 +70,7 @@ public:
     std::vector<std::string> argv;
     std::string description;
     std::vector<boost::filesystem::path> baseCallsDirectoryList;
+    std::vector<std::string> baseCallsDirectoryStringList;
     std::vector<std::string> baseCallsFormatStringList;
     std::vector<std::string> sampleSheetStringList;
     std::vector<std::string> barcodeMismatchesStringList;
@@ -78,10 +79,13 @@ public:
     std::vector<flowcell::Layout> flowcellLayoutList;
     flowcell::BarcodeMetadataList barcodeMetadataList;
     std::vector<boost::filesystem::path> sortedReferenceMetadataList;
+    std::vector<std::string> sortedReferenceMetadataStringList;
     std::vector<std::string> referenceNameList;
     reference::ReferenceMetadataList referenceMetadataList;
     boost::filesystem::path tempDirectory;
+    std::string tempDirectoryString;
     boost::filesystem::path outputDirectory;
+    std::string outputDirectoryString;
     // the seed descriptor
     std::string seedDescriptor;
     unsigned seedLength;

@@ -60,6 +60,18 @@ public:
         const unsigned seedLength,
         const reference::ReferenceMetadataList &referenceMetadataList,
         unsigned &firstPassSeeds);
+    static flowcell::Layout createFilteredFlowcell(
+        const std::string &tilesFilter,
+        const std::vector<boost::filesystem::path> &baseCallsDirectoryList,
+        const bool compressed,
+        const unsigned laneNumberMax,
+        const unsigned readNameLength,
+        std::string useBasesMask,
+        const bool allowVariableFastqLength,
+        const std::string &seedDescriptor,
+        const unsigned seedLength,
+        const reference::ReferenceMetadataList &referenceMetadataList,
+        unsigned &firstPassSeeds);
 
 private:
     struct FastqPathPair
@@ -74,6 +86,10 @@ private:
         const bool compressed,
         const unsigned laneNumberMax,
         const boost::filesystem::path &baseCallsDirectory);
+    static FastqPathPairList findFastqPathPairs(
+        const bool compressed,
+        const unsigned laneNumberMax,
+        const std::vector<boost::filesystem::path> &baseCallsDirectoryList);
     static FastqFlowcellInfo parseFastqFlowcellInfo(
         const FastqPathPair &laneFilePaths,
         const unsigned readNameLength);

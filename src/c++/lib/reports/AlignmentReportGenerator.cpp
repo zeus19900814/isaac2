@@ -175,7 +175,8 @@ void AlignmentReportGenerator::run()
         // And the gnuplot script path exists
         if (boost::filesystem::exists(gnuplotScriptPath_))
         {
-            std::string gnuplotCmd = "gnuplot " + gnuplotScriptPath_.string();
+	    std::string sanitizedGnuplotScriptPath = '\"' + gnuplotScriptPath_.string() + '\"';
+            std::string gnuplotCmd = "gnuplot " + sanitizedGnuplotScriptPath;
             common::executeCommand(gnuplotCmd);
         }
     }

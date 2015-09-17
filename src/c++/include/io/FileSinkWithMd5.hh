@@ -62,22 +62,13 @@ struct BasicFileSinkWithMd5 : private boost::iostreams::basic_file<Ch> {
     std::streamsize write(const char_type* s, std::streamsize n)
     {
         const std::streamsize ret = boost::iostreams::basic_file<Ch>::write(s, n);
-        md5Sum_.update(s, n);
+        
         return ret;
     }
 
     void close()
     {
         boost::iostreams::basic_file<Ch>::close();
-        const std::string md5String = md5Sum_.getHexStringDigest();
-        std::ofstream md5File((filePath_.string() + ".md5").c_str(), BOOST_IOS::out);
-        md5File << md5String << " *" << filePath_.filename().string() << std::endl;
-        if (!md5File)
-        {
-            BOOST_THROW_EXCEPTION(
-                common::IoException(errno, (boost::format("Failed to write bytes into md5 stream for %s") % md5String.size() % filePath_.string()).str()));
-        }
-        ISAAC_THREAD_CERR << "md5 checksum for "  << filePath_.string() << ":" << md5String << std::endl;
     }
 
 private:

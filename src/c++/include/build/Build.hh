@@ -222,7 +222,6 @@ private:
         const std::vector<char> &bgzfBuffer,
         std::ostream &bamStream,
         const bam::BamIndexPart &bamIndexPart,
-        bam::BamIndex &bamIndex,
         const boost::filesystem::path &filePath);
 
     unsigned long estimateBinCompressedDataRequirements(

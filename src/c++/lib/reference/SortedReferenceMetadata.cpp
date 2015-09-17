@@ -38,7 +38,7 @@ void SortedReferenceMetadata::makeAbsolutePaths(const boost::filesystem::path &b
     {
         BOOST_FOREACH(MaskFile &maskFile, maskFiles.second)
         {
-            maskFile.path = boost::filesystem::absolute(maskFile.path, basePath);
+            maskFile.path = boost::filesystem::absolute(maskFile.path);
         }
     }
 

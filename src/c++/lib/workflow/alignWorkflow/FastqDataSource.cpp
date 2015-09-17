@@ -121,9 +121,7 @@ flowcell::TileMetadataList FastqSeedSource<KmerT>::discoverTiles()
         clusters_.reset(clusterLength_, clustersToLoad);
         // load clusters, return tile breakdown based on tileClustersMax_
 
-        const boost::filesystem::path read1Path =
-            fastqFlowcellLayout_.getLaneReadAttribute<flowcell::Layout::Fastq, flowcell::FastqFilePathAttributeTag>(
-                *currentLaneIterator_, fastqFlowcellLayout_.getReadMetadataList().at(0).getNumber());
+        const boost::filesystem::path read1Path = fastqFlowcellLayout_.getBaseCallsPathList().at(0);
         if (1 == fastqFlowcellLayout_.getReadMetadataList().size())
         {
             // this will keep the current files open if the paths don't change
@@ -131,9 +129,7 @@ flowcell::TileMetadataList FastqSeedSource<KmerT>::discoverTiles()
         }
         else // assume paired data
         {
-            const boost::filesystem::path read2Path =
-                fastqFlowcellLayout_.getLaneReadAttribute<flowcell::Layout::Fastq, flowcell::FastqFilePathAttributeTag>(
-                    *currentLaneIterator_, fastqFlowcellLayout_.getReadMetadataList().at(1).getNumber());
+            const boost::filesystem::path read2Path = fastqFlowcellLayout_.getBaseCallsPathList().at(1);
             // this will keep the current files open if the paths don't change
             fastqLoader_.open(read1Path, read2Path);
         }
@@ -217,15 +213,10 @@ FastqBaseCallsSource::FastqBaseCallsSource(
     const unsigned inputLoadersMax,
     const std::string &qualityEncodingString):
     flowcellLayoutList_(flowcellLayoutList),
-    fastqLoader_(allowVariableFastqLength, getLongestFastqPath(flowcellLayoutList_).string().size(), threads, inputLoadersMax, qualityEncodingString),
+    fastqLoader_(allowVariableFastqLength, flowcellLayoutList_.at(0).getBaseCallsPathList().at(0).string().size(), threads, inputLoadersMax, qualityEncodingString),
     fastqFilePaths_(2) //read 1 and read 2 paths
 {
-    boost::filesystem::path longestFastqFilePath = getLongestFastqPath(flowcellLayoutList_);
-    BOOST_FOREACH(boost::filesystem::path &p, fastqFilePaths_)
-    {
-        // this has to be done separately for each path or else they all share one buffer
-        p = longestFastqFilePath.c_str();
-    }
+    fastqFilePaths_ = flowcellLayoutList_.at(0).getBaseCallsPathList();
 }
 
 void FastqBaseCallsSource::loadClusters(
@@ -235,17 +226,12 @@ void FastqBaseCallsSource::loadClusters(
     ISAAC_THREAD_CERR << "Loading Fastq data for " << tileMetadata << std::endl;
     const flowcell::Layout &flowcell = flowcellLayoutList_.at(tileMetadata.getFlowcellIndex());
 
-    flowcell.getLaneReadAttribute<flowcell::Layout::Fastq, flowcell::FastqFilePathAttributeTag>(
-        tileMetadata.getLane(), flowcell.getReadMetadataList().at(0).getNumber(), fastqFilePaths_.at(0));
-
     if (1 == flowcell.getReadMetadataList().size())
     {
         fastqLoader_.open(fastqFilePaths_[0]);
     }
     else
     {
-        flowcell.getLaneReadAttribute<flowcell::Layout::Fastq, flowcell::FastqFilePathAttributeTag>(
-            tileMetadata.getLane(), flowcell.getReadMetadataList().at(1).getNumber(), fastqFilePaths_.at(1));
         fastqLoader_.open(fastqFilePaths_[0], fastqFilePaths_[1]);
     }
 

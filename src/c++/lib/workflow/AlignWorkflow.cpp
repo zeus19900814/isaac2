@@ -206,7 +206,7 @@ AlignWorkflow::AlignWorkflow(
     , barcodeTemplateLengthStatistics_(barcodeMetadataList_.size())
 {
     const std::vector<bfs::path> createList = boost::assign::list_of
-        (tempDirectory_)(outputDirectory)(statsDirectory_)(reportsDirectory_)(projectsDirectory_);
+        (tempDirectory_)(outputDirectory)(projectsDirectory_);
     common::createDirectories(createList);
 
     BOOST_FOREACH(const flowcell::Layout &layout, flowcellLayoutList)
@@ -506,7 +506,6 @@ const build::BarcodeBamMapping AlignWorkflow::generateBam(
         common::ScopedMallocBlock  mallocBlock(memoryControl_);
         build.run(mallocBlock);
     }
-    build.dumpStats(statsDirectory_ / "BuildStats.xml");
     ISAAC_THREAD_CERR << "Generating the BAM files done" << std::endl;
     return build.getBarcodeBamMapping();
 }
@@ -575,7 +574,6 @@ AlignWorkflow::State AlignWorkflow::step()
     }
     case MatchSelectorDone:
     {
-        generateAlignmentReports();
         state_ = getNextState();
         break;
     }

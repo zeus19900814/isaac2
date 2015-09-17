@@ -85,7 +85,18 @@ public:
            const alignment::SeedMetadataList &seedMetadataList,
            const std::string &flowcellId);
 
+    Layout(const std::vector<boost::filesystem::path> &baseCallsDirectoryList,
+           const Format format,
+           const FormatSpecificData &formatSpecificData,
+           const unsigned laneNumberMax,
+           const unsigned readNameLength,
+           const std::vector<unsigned> &barcodeCycles,
+           const flowcell::ReadMetadataList &readMetadataList,
+           const alignment::SeedMetadataList &seedMetadataList,
+           const std::string &flowcellId);
+
     const boost::filesystem::path &getBaseCallsPath() const {return baseCallsPath_;}
+    const std::vector<boost::filesystem::path> &getBaseCallsPathList() const {return baseCallsPathList_;}
     Format getFormat() const {return format_;}
     unsigned getLaneNumberMax() const {return laneNumberMax_;}
     const std::string &getFlowcellId() const {return flowcellId_;}
@@ -197,6 +208,7 @@ public:
 
 private:
     boost::filesystem::path baseCallsPath_;
+    std::vector<boost::filesystem::path> baseCallsPathList_;
     Format format_;
     FormatSpecificData formatSpecificData_;
     unsigned laneNumberMax_;

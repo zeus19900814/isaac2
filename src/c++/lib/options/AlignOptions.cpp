@@ -80,8 +80,8 @@ AlignOptions::AlignOptions()
     , baseCallsFormatStringList(1, "bcl")
     , barcodeMismatchesStringList(1, "1")
     , referenceNameList(1, "default")
-    , tempDirectory("./Temp")
-    , outputDirectory("./Aligned")
+    , tempDirectoryString("./Temp")
+    , outputDirectoryString("./Aligned")
     , seedDescriptor("auto")//("16:0:32:64")
     , seedLength(32)
     , allowVariableFastqReadLength(false)
@@ -182,7 +182,7 @@ AlignOptions::AlignOptions()
             ;
 
     namedOptions_.add_options()
-        ("base-calls,b"   , bpo::value<std::vector<bfs::path> >(&baseCallsDirectoryList)->multitoken(),
+        ("base-calls,b"   , bpo::value<std::vector<std::string> >(&baseCallsDirectoryStringList)->multitoken(),
                 "full path to the base calls. Multiple entries allowed. Path should point either to a directory or "
                 "a file depending on --base-calls-format")
         ("base-calls-format,f"   , bpo::value<std::vector<std::string> >(&baseCallsFormatStringList)->multitoken(),
@@ -297,7 +297,7 @@ AlignOptions::AlignOptions()
             "iSAAC will attempt to bin temporary data so that each bin is close to targetBinSize in megabytes "
             "(1024 * 1024 bytes). Value of 0 will cause iSAAC to compute the target bin size automatically based on "
             "the available memory.")
-        ("reference-genome,r"       , bpo::value<std::vector<bfs::path> >(&sortedReferenceMetadataList),
+        ("reference-genome,r"       , bpo::value<std::vector<std::string> >(&sortedReferenceMetadataStringList),
                 "Full path to the reference genome XML descriptor. Multiple entries allowed."
                 "Each entry applies to the corresponding --reference-name. The last --reference-genome entry "
                 "may not have a corresponding --reference-name. In this case the default name 'default' is assumed."
@@ -310,9 +310,9 @@ AlignOptions::AlignOptions()
                 "\n  - unknown         : default reference to use with data that did not match any barcode."
                 "\n  - default         : reference to use for the data with no matching value in sample sheet 'reference' column."
             )
-        ("temp-directory,t"         , bpo::value<bfs::path>(&tempDirectory)->default_value(tempDirectory),
+        ("temp-directory,t"         , bpo::value<std::string>(&tempDirectoryString)->default_value(tempDirectoryString),
                 "Directory where the temporary files will be stored (matches, unsorted alignments, etc.)")
-        ("output-directory,o"       , bpo::value<bfs::path>(&outputDirectory)->default_value(outputDirectory),
+        ("output-directory,o"       , bpo::value<std::string>(&outputDirectoryString)->default_value(outputDirectoryString),
                 "Directory where the final alignment data be stored")
         ("jobs,j"                   , bpo::value<unsigned int>(&jobs)->default_value(jobs),
                 "Maximum number of compute threads to run in parallel")
@@ -577,13 +577,15 @@ void AlignOptions::verifyMandatoryPaths(bpo::variables_map &vm)
         }
     }
     typedef std::pair<bfs::path *, std::string> PathOption;
-    if (baseCallsDirectoryList.empty())
+    if (baseCallsDirectoryStringList.empty())
     {
         const format message = format("\n   *** At least one 'base-calls' is required ***\n");
         BOOST_THROW_EXCEPTION(InvalidOptionException(message.str()));
     }
-    BOOST_FOREACH(bfs::path &baseCallsDirectory, baseCallsDirectoryList)
+    BOOST_FOREACH(std::string &baseCallsDirectoryString, baseCallsDirectoryStringList)
     {
+	bfs::path baseCallsDirectory = baseCallsDirectoryString;
+	baseCallsDirectoryList.push_back(baseCallsDirectory);
         if (baseCallsDirectory.empty())
         {
             const format message = format("\n   *** The 'base-calls' can't be empty (use '.' for current directory) ***\n") % baseCallsDirectory;
@@ -597,8 +599,10 @@ void AlignOptions::verifyMandatoryPaths(bpo::variables_map &vm)
         baseCallsDirectory = boost::filesystem::absolute(baseCallsDirectory);
     }
 
-    BOOST_FOREACH(bfs::path &sortedReferenceMetadata, sortedReferenceMetadataList)
-    {
+    BOOST_FOREACH(const std::string &sortedReferenceMetadataString, sortedReferenceMetadataStringList)
+     {
+	bfs::path sortedReferenceMetadata = sortedReferenceMetadataString;
+	sortedReferenceMetadataList.push_back(sortedReferenceMetadata);
         if (sortedReferenceMetadata.empty())
         {
             const format message = format("\n   *** The 'reference-genome' can't be empty ***\n") % sortedReferenceMetadata;
@@ -617,6 +621,8 @@ void AlignOptions::verifyMandatoryPaths(bpo::variables_map &vm)
         }
     }
 
+    tempDirectory = tempDirectoryString;
+    outputDirectory = outputDirectoryString;
     const std::vector<PathOption> pathOptions = boost::assign::list_of
         (PathOption(&tempDirectory, "temp-directory"))
         (PathOption(&outputDirectory, "output-directory"));
@@ -1248,6 +1254,117 @@ void AlignOptions::postProcess(bpo::variables_map &vm)
     }
 
     std::vector<boost::filesystem::path> sampleSheetPathList = parseSampleSheetPaths();
+
+    flowcell::Layout fc = 
+	flowcell::Layout::Fastq == baseCallsFormatList.at(0).first ?
+	alignOptions::FastqFlowcell::createFilteredFlowcell(
+	    tilesFilterList.at(0),
+	    baseCallsDirectoryList,
+	    baseCallsFormatList.at(0).second,
+	    laneNumberMax,
+	    readNameLength,
+	    useBasesMaskList.at(0),
+	    allowVariableReadLength,
+	    seedDescriptor, seedLength, referenceMetadataList,
+	    firstPassSeeds) :
+        flowcell::Layout::Bam == baseCallsFormatList.at(0).first ?
+        alignOptions::BamFlowcell::createFilteredFlowcell(
+            tilesFilterList.at(0),
+            baseCallsDirectoryList.at(0),
+            laneNumberMax,
+            readNameLength,
+            useBasesMaskList.at(0),
+            allowVariableReadLength,
+            seedDescriptor, seedLength, referenceMetadataList,
+            firstPassSeeds) :
+        alignOptions::BclFlowcell::createFilteredFlowcell(
+            tilesFilterList.at(0),
+            baseCallsDirectoryList.at(0),
+            baseCallsFormatList.at(0).first,
+            baseCallsFormatList.at(0).second,
+            laneNumberMax,
+            useBasesMaskList.at(0),
+            seedDescriptor, seedLength, referenceMetadataList,
+            firstPassSeeds);
+    if (!fc.getReadMetadataList().empty())
+    {
+	if (fc.getLaneIds().empty())
+	{
+	    if (!allowEmptyFlowcells_)
+	    {
+	        const boost::format message = boost::format("\n   *** Could not find any lanes matching the '%s' in: %s. Use --allow-empty-flowcell to avoid the failure. ***\n") %
+		tilesFilterList.at(0) % baseCallsDirectoryList.at(0);
+		BOOST_THROW_EXCEPTION(common::InvalidOptionException(message.str()));
+	    }
+	}
+	else
+	{
+	    const std::string oriFlowcellId = fc.getFlowcellId().empty() ? "unknown-flowcell" : fc.getFlowcellId().c_str();
+	    std::string uniqueFlowcellId = oriFlowcellId;
+	    unsigned conflictingIdCount = 0;
+	    while (flowcellLayoutList.end() != std::find_if(flowcellLayoutList.begin(), flowcellLayoutList.end(),
+		    boost::bind(&flowcell::Layout::getFlowcellId, _1) == uniqueFlowcellId))
+	    {
+		++conflictingIdCount;
+		uniqueFlowcellId = oriFlowcellId + (boost::format("-%d") % conflictingIdCount).str();
+		ISAAC_THREAD_CERR << uniqueFlowcellId << std::endl;
+	    }
+	    if (oriFlowcellId != uniqueFlowcellId)
+	    {
+		ISAAC_THREAD_CERR << "WARNING: renamed flowcell id " << oriFlowcellId << " into " << uniqueFlowcellId << " to avoid duplication" << std::endl;
+	    }
+
+	    fc.setFlowcellId(uniqueFlowcellId);
+
+	    flowcellLayoutList.push_back(fc);
+	    // TODO: grouper does not understand FlowcellID. It expects <machine-name>_<run-number>.
+	    flowcellLayoutList.back().setIndex(flowcellLayoutList.size() - 1);
+
+	    const flowcell::SequencingAdapterMetadataList flowcellDefaultAdapters = flowcell::SequencingAdapterMetadataList();
+	    flowcell::BarcodeMetadataList sampleSheet =
+		demultiplexing::loadSampleSheetCsv(sampleSheetPathList.at(0),
+				                   // use internal, guaranteed unique id for 'assumed'
+				                   uniqueFlowcellId,
+				                   // use the id originally read from BaseCalls metadata for 'expected'
+				                   fc.getFlowcellId(),
+				                   flowcellLayoutList.back().getBarcodeLength(),
+				                   flowcellLayoutList.back().getIndex(),
+				                   flowcellLayoutList.back().getLaneIds(),
+				                   referenceMetadataList, flowcellDefaultAdapters);
+
+	    const std::vector<unsigned> barcodeComponentMismatches = parseBarcodeMismatches(barcodeMismatchesStringList.at(0));
+	    std::for_each(sampleSheet.begin(), sampleSheet.end(),
+			boost::bind(&flowcell::BarcodeMetadata::setComponentMismatches, _1, boost::ref(barcodeComponentMismatches)));
+
+
+	    BOOST_FOREACH(flowcell::BarcodeMetadata barcode, sampleSheet)
+	    {
+		// ensure the barcode indexes link back to their position in the global barcode list
+		barcode.setIndex(barcodeMetadataList.size());
+		barcodeMetadataList.push_back(barcode);
+	    }
+	}
+    }
+    else
+    {
+	if (allowEmptyFlowcells_)
+	{
+	    ISAAC_THREAD_CERR << "WARNING: Flowcell " << fc << " has no data" << std::endl;
+	}
+	else
+	{
+	    const boost::format message =
+		boost::format("\n   *** %s has no data. Use --allow-empty-flowcell to avoid the failure. ***\n") % fc;
+	    BOOST_THROW_EXCEPTION(common::InvalidOptionException(message.str()));
+	}
+    }
+
+    if (flowcellLayoutList.empty())
+    {
+	BOOST_THROW_EXCEPTION(common::InvalidOptionException("No data found to process. Please check your --base-calls."));
+    }
+
+    /*
     for (std::size_t i = 0; baseCallsDirectoryList.size() > i; ++i)
     {
         flowcell::Layout fc =
@@ -1361,6 +1478,7 @@ void AlignOptions::postProcess(bpo::variables_map &vm)
             BOOST_THROW_EXCEPTION(common::InvalidOptionException("No data found to process. Please check your --base-calls."));
         }
     }
+    */
 
     if (0 >= firstPassSeeds)
     {

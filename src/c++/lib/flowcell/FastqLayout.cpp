@@ -62,8 +62,10 @@ const boost::filesystem::path &Layout::getLaneReadAttribute<Layout::Fastq, Fastq
     ISAAC_ASSERT_MSG(lane <= laneNumberMax_, "Lane number " << lane << " must not exceed " << laneNumberMax_);
 
     const FastqFlowcellData &data = boost::get<FastqFlowcellData>(formatSpecificData_);
+       
+    boost::filesystem::path read1 = getBaseCallsPathList().at(0);
+    fastq::getFastqFilePath(read1.parent_path(), lane, read, data.compressed_, result);
 
-    fastq::getFastqFilePath(getBaseCallsPath(), lane, read, data.compressed_, result);
     return result;
 }
 

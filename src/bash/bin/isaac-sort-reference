@@ -101,14 +101,15 @@ while (( ${#@} )); do
         maskWidth=$1
         shift
     elif [[ $param == "--genome-file" || $param == "-g" ]]; then
-        genomeFile=$(cd $(dirname "$1") && pwd)/$(basename "$1")
+	genomeFileDir=$(dirname "$1")
+        genomeFile=$(cd "${genomeFileDir}" && pwd)/$(basename "$1")
         shift
     elif [[ $param == "--dont-annotate" ]]; then
         annotationSeedLengths=''
     elif [[ $param == "--dry-run" || $param == "-n" ]]; then
         dryRun='-n'
     elif [[ $param == "--output-directory" || $param == "-o" ]]; then
-        outputDirectory=$1
+        outputDirectory="$1"
         shift
     elif [[ $param == "--repeat-threshold" || $param == "-t" ]]; then
         repeatThreshold=$1
@@ -159,8 +160,8 @@ gridShell="LOG_SHELL:=${GRID_SHELL}"
 [[ -z "$qrsh_cmd" ]] && gridShell=''
 
 QRSH_CMD="$qrsh_cmd" make $dryRun -j $jobs \
-    -f ${SORT_REFERENCE_MK} \
-    -C $outputDirectory \
-    GENOME_FILE:=$genomeFile ANNOTATION_MASK_WIDTH:=$maskWidth MASK_WIDTH:=$maskWidth SEED_LENGTHS:="${seedLengths}" iSAAC_LOG_LEVEL:=$logLevel \
+    -f "${SORT_REFERENCE_MK}" \
+    -C "$outputDirectory" \
+    GENOME_FILE:="$genomeFile" ANNOTATION_MASK_WIDTH:=$maskWidth MASK_WIDTH:=$maskWidth SEED_LENGTHS:="${seedLengths}" iSAAC_LOG_LEVEL:=$logLevel \
     REPEAT_THRESHOLD:=$repeatThreshold NEIGHBORHOOD_DISTANCE:=$neighborhoodDistance ANNOTATION_SEED_LENGTHS:="${annotationSeedLengths}" $target \
     $gridShell || exit 2

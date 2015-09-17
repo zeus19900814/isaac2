@@ -49,6 +49,29 @@ Layout::Layout(const boost::filesystem::path &baseCallsDirectory,
 {
 }
 
+Layout::Layout(const std::vector<boost::filesystem::path> &baseCallsDirectoryList,
+        const Format format,
+        const FormatSpecificData &formatSpecificData,
+        const unsigned laneNumberMax,
+        const unsigned readNameLength,
+        const std::vector<unsigned> &barcodeCycles,
+        const flowcell::ReadMetadataList &readMetadataList,
+        const alignment::SeedMetadataList &seedMetadataList,
+        const std::string &flowcellId)
+     : baseCallsPathList_(baseCallsDirectoryList)
+     , format_(format)
+     , formatSpecificData_(formatSpecificData)
+     , laneNumberMax_(laneNumberMax)
+     , readNameLength_(readNameLength)
+     , barcodeCycles_(barcodeCycles)
+     , flowcellId_(flowcellId)
+     , readMetadataList_(readMetadataList)
+     , seedMetadataList_(seedMetadataList)
+     , dataCycles_(flowcell::getAllCycleNumbers(readMetadataList_))
+     , index_(0)
+{
+}
+
 
 } // namespace flowcell
 } // namespace isaac

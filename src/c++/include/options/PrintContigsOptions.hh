@@ -40,6 +40,7 @@ private:
 public:
     boost::filesystem::path originalMetadataPath;
     boost::filesystem::path genomeFile;
+    std::string genomeFileString;
 };
 
 } // namespace options

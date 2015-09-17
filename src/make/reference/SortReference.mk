@@ -65,15 +65,15 @@ $(ALL_MASK_XMLS):mask=$(lastword $(subst -, ,$(subst $(MASK_FILE_XML_SUFFIX),,$(
 $(ALL_MASK_XMLS):seed_length=$(firstword $(subst -, ,$(subst $(MASK_FILE_XML_SUFFIX),,$(lastword $(subst $(MASK_FILE_PREFIX), ,$@)))))
 $(ALL_MASK_XMLS):mask_file=$(notdir $(@:%$(MASK_FILE_XML_SUFFIX)=%$(MASK_FILE_SUFFIX)))
 
-$(CONTIGS_XML): $(GENOME_FILE) $(TEMP_DIR)/.sentinel
-	$(CMDPREFIX) $(PRINT_CONTIGS) -g $(GENOME_FILE) >$(SAFEPIPETARGET)
+$(CONTIGS_XML): $(TEMP_DIR)/.sentinel
+	$(CMDPREFIX) $(PRINT_CONTIGS) -g "$(GENOME_FILE)" >$(SAFEPIPETARGET)
 
 ifneq (,$(ANNOTATION_MASKS))
 .SECONDEXPANSION:
 $(ALL_MASK_XMLS): $(CONTIGS_XML) $(TEMP_DIR)/.sentinel $(TEMP_DIR)/$(GENOME_NEIGHBORS_PREFIX)$$(seed_length)$(GENOME_NEIGHBORS_SUFFIX)
 	$(CMDPREFIX) $(SORT_REFERENCE) -r $(CONTIGS_XML) --mask-width $(MASK_WIDTH) --mask $(mask) \
 		--seed-length $(seed_length) \
-		--output-file $(CURDIR)/$(mask_file) \
+		--output-file $(mask_file) \
 		--repeat-threshold $(REPEAT_THRESHOLD) \
 		--genome-neighbors $(lastword $^) >$(SAFEPIPETARGET)
 

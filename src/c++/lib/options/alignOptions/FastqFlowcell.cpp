@@ -108,7 +108,6 @@ public:
     }
 };
 
-
 FastqFlowcell::FastqPathPairList FastqFlowcell::findFastqPathPairs(
     const bool compressed,
     const unsigned laneNumberMax,
@@ -142,6 +141,35 @@ FastqFlowcell::FastqPathPairList FastqFlowcell::findFastqPathPairs(
         }
     }
 
+    return ret;
+}
+
+FastqFlowcell::FastqPathPairList FastqFlowcell::findFastqPathPairs(
+    const bool compressed,
+    const unsigned laneNumberMax,
+    const std::vector<boost::filesystem::path> &baseCallsDirectoryList)
+{
+
+    FastqPathPairList ret;
+
+    FastqPathPair p;
+    if (!baseCallsDirectoryList.empty()) {
+        boost::filesystem::path r1Path = baseCallsDirectoryList.at(0);
+	if (boost::filesystem::exists(r1Path)) {
+		p.r1Path_ = r1Path;
+	}
+	if (baseCallsDirectoryList.size() == 2) {
+		boost::filesystem::path r2Path = baseCallsDirectoryList.at(1);
+		if (boost::filesystem::exists(r2Path)) {
+			p.r2Path_ = r2Path;
+		}
+	}
+	if (!p.r1Path_.empty() || !p.r2Path_.empty())
+        {
+            p.lane_ = 1;
+            ret.push_back(p);
+        }
+    }
     return ret;
 }
 
@@ -241,6 +269,93 @@ FastqFlowcellInfo FastqFlowcell::parseFastqFlowcellInfo(
     }
     ISAAC_THREAD_CERR << ret << std::endl;
     return ret;
+}
+
+flowcell::Layout FastqFlowcell::createFilteredFlowcell(
+    const std::string &tilesFilter,
+    const std::vector<boost::filesystem::path> &baseCallsDirectoryList,
+    const bool compressed,
+    const unsigned laneNumberMax,
+    const unsigned readNameLength,
+    std::string useBasesMask,
+    const bool allowVariableFastqLength,
+    const std::string &seedDescriptor,
+    const unsigned seedLength,
+    const reference::ReferenceMetadataList &referenceMetadataList,
+    unsigned &firstPassSeeds)
+{
+
+    FastqPathPairList flowcellFilePaths = findFastqPathPairs(compressed, laneNumberMax, baseCallsDirectoryList);
+    if (flowcellFilePaths.empty())
+    {
+        const boost::format message = boost::format("\n   *** Could not find any fastq lanes in: %s ***\n") %
+            baseCallsDirectoryList.at(0);
+        BOOST_THROW_EXCEPTION(common::InvalidOptionException(message.str()));
+    }
+
+    FastqFlowcellInfo flowcellInfo = parseFastqFlowcellInfo(flowcellFilePaths, allowVariableFastqLength, readNameLength);
+
+    std::vector<unsigned int> readLengths;
+    if (flowcellInfo.readLengths_.first)
+    {
+        readLengths.push_back(flowcellInfo.readLengths_.first);
+    }
+    if (flowcellInfo.readLengths_.second)
+    {
+        readLengths.push_back(flowcellInfo.readLengths_.second);
+    }
+
+    if ("default" == useBasesMask)
+    {
+        if (readLengths.size() == 1)
+        {
+            useBasesMask = "y*n";
+        }
+        else if (readLengths.size() == 2)
+        {
+            useBasesMask = "y*n,y*n";
+        }
+        else
+        {
+            const boost::format message =
+                boost::format("\n   *** Could not guess the use-bases-mask for '%s', please supply the explicit value ***\n") %
+                baseCallsDirectoryList.at(0).string();
+            BOOST_THROW_EXCEPTION(common::InvalidOptionException(message.str()));
+        }
+    }
+
+    std::vector<unsigned int> readFirstCycles;
+
+    ParsedUseBasesMask parsedUseBasesMask;
+    alignment::SeedMetadataList seedMetadataList;
+    if (!readLengths.empty())
+    {
+        parsedUseBasesMask = parseUseBasesMask(readFirstCycles, readLengths, seedLength, useBasesMask, baseCallsDirectoryList.at(0));
+        seedMetadataList = parseSeedDescriptor(parsedUseBasesMask.dataReads_, seedDescriptor, seedLength, firstPassSeeds);
+    }
+
+    flowcell::Layout fc(baseCallsDirectoryList,
+                        flowcell::Layout::Fastq,
+                        flowcell::FastqFlowcellData(compressed),
+                        laneNumberMax,
+                        flowcellInfo.readNameLength_,
+                        std::vector<unsigned>(),
+                        parsedUseBasesMask.dataReads_,
+                        seedMetadataList, flowcellInfo.flowcellId_);
+
+    std::string regexString(tilesFilter);
+    std::replace(regexString.begin(), regexString.end(), ',', '|');
+    boost::regex re(regexString);
+    BOOST_FOREACH(const unsigned int lane, flowcellInfo.getLanes())
+    {
+        std::string laneString((boost::format("s_%d") % lane).str());
+        if (boost::regex_search(laneString, re))
+        {
+            fc.addTile(lane, 1);
+        }
+    }
+
+    return fc;
 }
 
 flowcell::Layout FastqFlowcell::createFilteredFlowcell(

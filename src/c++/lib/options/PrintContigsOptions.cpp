@@ -37,7 +37,7 @@ PrintContigsOptions::PrintContigsOptions()
         ("original-metadata"       , bpo::value<boost::filesystem::path>(&originalMetadataPath),
                 "If supplied, the additional contig metadata fields will be copied over from it."
             )
-        ("genome-file,g",       bpo::value<boost::filesystem::path>(&genomeFile),
+        ("genome-file,g",       bpo::value<std::string>(&genomeFileString),
                                 "Name of the reference genome")
         ;
 }
@@ -58,6 +58,7 @@ void PrintContigsOptions::postProcess(bpo::variables_map &vm)
             const format message = format("\n   *** The '%s' option is required ***\n") % required;
             BOOST_THROW_EXCEPTION(InvalidOptionException(message.str()));
         }
+	genomeFile = genomeFileString;
     }
 }
 

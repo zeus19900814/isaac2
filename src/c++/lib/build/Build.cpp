@@ -220,7 +220,6 @@ std::vector<boost::shared_ptr<boost::iostreams::filtering_ostream> > Build::crea
                 unsigned headerCompressedLength = compressedHeader.size();
                 unsigned contigCount = sampleReference.getContigsCount(
                     boost::bind(&BuildContigMap::isMapped, &contigMap_, barcode.getReferenceIndex(), _1));
-                bamIndexes.push_back(new bam::BamIndex(bamPath, contigCount, headerCompressedLength));
             }
             else
             {
@@ -520,8 +519,6 @@ void Build::run(common::ScopedMallocBlock &mallocBlock)
             bam::serializeBgzfFooter(*stm);
             stm->flush();
             ISAAC_THREAD_CERR << "BAM file generated: " << bamFilePath << "\n";
-            bamIndexes_.at(fileIndex).flush();
-            ISAAC_THREAD_CERR << "BAM index generated for " << bamFilePath << "\n";
         }
         ++fileIndex;
     }
@@ -847,7 +844,7 @@ void Build::saveAndReleaseBuffers(
             }
             else
             {
-                saveBuffer(bgzfBuffer, *stm, threadBamIndexParts_.at(threadNumber).at(index), bamIndexes_.at(index), filePath);
+                saveBuffer(bgzfBuffer, *stm, threadBamIndexParts_.at(threadNumber).at(index), filePath);
             }
         }
         // release rest of the memory that was reserved for this bin
@@ -861,7 +858,6 @@ void Build::saveBuffer(
     const std::vector<char> &bgzfBuffer,
     std::ostream &bamStream,
     const bam::BamIndexPart &bamIndexPart,
-    bam::BamIndex &bamIndex,
     const boost::filesystem::path &filePath)
 {
     ISAAC_THREAD_CERR << "Saving " << bgzfBuffer.size() << " bytes of sorted data for bin " << filePath << std::endl;
@@ -871,8 +867,7 @@ void Build::saveBuffer(
         BOOST_THROW_EXCEPTION(common::IoException(
             errno, (boost::format("Failed to write bgzf block of %d bytes into bam stream") % bgzfBuffer.size()).str()));
     }
-    bamIndex.processIndexPart( bamIndexPart, bgzfBuffer );
-
+    
     ISAAC_THREAD_CERR << "Saving " << bgzfBuffer.size() << " bytes of sorted data for bin " << filePath << " done in " << (clock() - start) / 1000 << "ms\n";
 }
 
